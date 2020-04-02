@@ -20,12 +20,12 @@ jobs:
 
     strategy:
       matrix:
-        targetplatform: [x86, x64]
+        targetplatform: [ x64]
 
     runs-on: windows-latest
 
     env:
-      SigningCertificate: GitHubActionsDemo.pfx
+      
       Solution_Path: MyWpfApp.sln
       Test_Project_Path: MyWpfApp.Tests\MyWpfApp.Tests.csproj
       Wpf_Project_Path: MyWpfApp\MyWpfApp.csproj
@@ -38,11 +38,6 @@ jobs:
       with:
         fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
 
-    # Use Nerdbank.GitVersioning to set version variables: https://github.com/AArnott/nbgv
-    - name: Use Nerdbank.GitVersioning to set version variables
-      uses: aarnott/nbgv@v0.3
-      with:
-        setAllVars: true
 
     # Install the .NET Core workload
     - name: Install .NET Core

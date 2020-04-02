@@ -1,20 +1,7 @@
-# Copyright (c) Microsoft Corporation.
-# Licensed under the MIT license.
 
-# This continuous delivery pipeline is meant to be triggered on release, anytime a user pushes code associated to a git tag,
-# and will run against multiple configurations and production environments.
-# This pipeline builds the Wpf project based upon the configuration matrix below.  In order to
-# create different channels of the application, the pipeline uses the Package.Identity.Name defined in the
-# Package.appxmanifest in the Windows Application Packaging Project to uniquely identify the application,
-# depending on which channel is being built.
-# Once the MSIX is created for each channel configuration, the agent archives the AppPackages folder, then creates
-# a Release with the specified git release tag. The archive is uploaded to the release as an asset for storage or distribution.
 name:  Wpf Continuous Delivery
 
-# Trigger on any push with a git tag
-# To create a git tag, run the following commands on the branch you wish to release:
-#   git tag 1.0.0.0
-#   git push origin --tags
+
 on:
   push:
     tags:
@@ -64,7 +51,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      SigningCertificate: GitHubActionsDemo.pfx
+    
       Solution_Path: MyWpfApp.sln
       Test_Project_Path: MyWpfApp.Tests\MyWpfApp.Tests.csproj
       Wpf_Project_Path: MyWpfApp\MyWpfApp.csproj
@@ -74,14 +61,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-      with:
-        fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
 
-    # Use Nerdbank.GitVersioning to set version variables: https://github.com/AArnott/nbgv
-    - name: Use Nerdbank.GitVersioning to set version variables
-      uses: aarnott/nbgv@v0.3
-      with:
-        setAllVars: true
 
     # Install the .NET Core workload
     - name: Install .NET Core
@@ -89,66 +69,13 @@ jobs:
       with:
         dotnet-version: 3.1.100
 
-    # Add  MsBuild to the PATH: https://github.com/microsoft/setup-msbuild
+    
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1.0.0
 
-    # Update the appxmanifest before build by setting the per-channel values set in the matrix such as
-    # the Package.Identity.Version or the Package.Identity.Name, which allows multiple channels to be built.
-    - name: Update manifest version
-      run: |
-        [xml]$manifest = get-content ".\$env:Wap_Project_Directory\Package.appxmanifest"
-        $manifest.Package.Identity.Version = "$env:NBGV_SimpleVersion.0"
-        $manifest.Package.Identity.Name = "${{ matrix.MsixPackageId }}"
-        $manifest.Package.Identity.Publisher = "${{ matrix.MsixPublisherId }}"
-        $manifest.Package.Properties.DisplayName = "${{ matrix.MsixPackageDisplayName }}"
-        $manifest.Package.Applications.Application.VisualElements.DisplayName = "${{ matrix.MsixPackageDisplayName }}"
-        $manifest.save(".\$env:Wap_Project_Directory\Package.appxmanifest")
+ 
 
-    # Decode the Base64 encoded Pfx
-    - name: Decode the Pfx
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
-        $currentDirectory = Get-Location
-        $certificatePath = Join-Path -Path $currentDirectory -ChildPath $env:Wap_Project_Directory -AdditionalChildPath $env:SigningCertificate
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-      if: matrix.ChannelName != 'Prod_Store'
-
-    # Restore the application
-    - name:  Restore the Wpf application to populate the obj folder
-      run: msbuild $env:Solution_Path /t:Restore /p:Configuration=$env:Configuration /p:RuntimeIdentifier=$env:RuntimeIdentifier
-      env:
-        Configuration: ${{ matrix.Configuration }}
-        RuntimeIdentifier: win-${{ matrix.targetplatform }}
-
-    # Build the Windows Application Packaging project for Dev and Prod_Sideload
-    - name: Build the Windows Application Packaging Project (wapproj) for ${{ matrix.ChannelName }}
-      run: msbuild $env:Solution_Path /p:Platform=$env:TargetPlatform /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:BuildMode /p:AppxBundle=$env:AppxBundle /p:PackageCertificateKeyFile=$env:SigningCertificate /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
-      if: matrix.ChannelName != 'Prod_Store'
-      env:
-        AppxBundle: Never
-        AppInstallerUri: ${{ matrix.DistributionUrl }}
-        BuildMode: SideloadOnly
-        Configuration: ${{ matrix.Configuration }}
-        GenerateAppInstallerFile: True
-        TargetPlatform: ${{ matrix.targetplatform }}
-
-    # Build the Windows Application Packaging project for Prod_Store
-    - name: Build the Windows Application Packaging Project (wapproj) for ${{ matrix.ChannelName }}
-      run: msbuild $env:Solution_Path /p:Platform=$env:TargetPlatform /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:BuildMode /p:AppxBundle=$env:AppxBundle /p:GenerateAppInstallerFile=$env:GenerateAppInstallerFile /p:AppxPackageSigningEnabled=$env:AppxPackageSigningEnabled
-      if: matrix.ChannelName == 'Prod_Store'
-      env:
-        AppxBundle: Never
-        AppxPackageSigningEnabled: False
-        BuildMode: StoreUpload
-        Configuration: ${{ matrix.Configuration }}
-        GenerateAppInstallerFile: False
-        TargetPlatform: ${{ matrix.targetplatform }}
-
-    # Remove the .pfx
-    - name: Remove the .pfx
-      run: Remove-Item -path $env:Wap_Project_Directory\$env:SigningCertificate
-      if: matrix.ChannelName != 'Prod_Store'
+  
 
     # Archive the package
     - name: Create archive
