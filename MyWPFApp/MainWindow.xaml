@@ -52,7 +52,7 @@
         <Label Grid.Row="4" Content="AssemblyVersion" Target="{Binding ElementName=assemblyVersion}" VerticalAlignment="Center" />
         <TextBlock Grid.Row="4" x:Name="assemblyVersion" Grid.Column="1" VerticalAlignment="Center" />
 
-        <Label Grid.Row="5" Content="Install Location" Target="{Binding ElementName=installLocation}" />
+        <Label Grid.Row="5" Content="Installl Location" Target="{Binding ElementName=installLocation}" />
         <TextBlock Grid.Row="5" x:Name="installLocation" Grid.Column="1" VerticalAlignment="Center"  />
 
 
